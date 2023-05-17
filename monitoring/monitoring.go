@@ -252,10 +252,41 @@ func RegisterIf(metric Metric, enabled func() bool) Metric {
 	return &disabledMetric{name: metric.Name()}
 }
 
+type sumFloatMetric struct {
+	*float64Metric
+}
+
+func (m *sumFloatMetric) Register() error {
+	err := m.float64Metric.Register()
+	if err == nil {
+		m.Record(0)
+	}
+	return err
+}
+
+type sumIntMetric struct {
+	*int64Metric
+}
+
+func (m *sumIntMetric) Register() error {
+	err := m.int64Metric.Register()
+	if err == nil {
+		m.Record(0)
+	}
+	return err
+}
+
 // NewSum creates a new Metric with an aggregation type of Sum (the values will be cumulative).
 // That means that data collected by the new Metric will be summed before export.
 func NewSum(name, description string, opts ...Options) Metric {
-	return newMetric(name, description, view.Sum(), opts...)
+	metric := newMetric(name, description, view.Sum(), opts...)
+	if x, ok := metric.(*float64Metric); ok {
+		metric = &sumFloatMetric{x}
+	}
+	if x, ok := metric.(*int64Metric); ok {
+		metric = &sumIntMetric{x}
+	}
+	return metric
 }
 
 // NewGauge creates a new Metric with an aggregation type of LastValue. That means that data collected
